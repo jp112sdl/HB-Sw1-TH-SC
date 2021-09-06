@@ -9,14 +9,11 @@
 // #define USE_OTA_BOOTLOADER
 
 
-#define HIDE_IGNORE_MSG
+//#define HIDE_IGNORE_MSG
 
-#ifndef __AVR_ATmega128__
-  #define EI_NOTEXTERNAL
-  #include <EnableInterrupt.h>
-  #include <LowPower.h>
-#endif
-#include <SPI.h>
+#define EI_NOTEXTERNAL
+#include <EnableInterrupt.h>
+#include <LowPower.h>
 #include <AskSinPP.h>
 #include <Sensirion.h>
 
@@ -25,17 +22,13 @@
 #include <ContactState.h>
 #include <Switch.h>
 
-#ifdef __AVR_ATmega128__
-  #define CONFIG_BUTTON_PIN   7 //PE7
-  #define LED_PIN            22 //PD4
-  #define CC1101_CS           8 //PB0
-  #define CC1101_GDO0         6 //PE6
+#define CONFIG_BUTTON_PIN   8
+#define LED_PIN             4
+#define CC1101_CS          10
+#define CC1101_GDO0         2
 
-  #define BTN1_PIN           5 //PE5
-  #define SC_PIN             3 //PB5
-  #define RELAY_PIN         15 //PB7
-
-#endif
+#define SC_PIN             9 
+#define RELAY_PIN          5 
 
 #define INVERT_RELAY      false
 #define PEERS_PER_CHANNEL 8
@@ -54,7 +47,7 @@ const struct DeviceInfo PROGMEM devinfo = {
 };
 
 
-typedef LibSPI<CC1101_CS> RadioSPI;
+typedef AvrSPI<CC1101_CS,11,12,13> RadioSPI;
 typedef AskSin<StatusLed<LED_PIN>,NoBattery,Radio<RadioSPI,CC1101_GDO0> > Hal;
 Hal hal;
 
@@ -217,8 +210,7 @@ class UType : public ChannelDevice<Hal, VirtBaseChannel<Hal, GDList0>, 3, GDList
 
 UType sdev(devinfo, 0x20);
 
-ConfigButton<UType> cfgBtn(sdev);
-InternalButton<UType> btn1(sdev,1);
+ConfigToggleButton<UType> cfgBtn(sdev);
 
 void initPeerings (bool first) {
   if( first == true ) {
@@ -238,7 +230,6 @@ void setup () {
   sdev.tsChannel().init(SC_PIN);
 
   buttonISR(cfgBtn,CONFIG_BUTTON_PIN);
-  buttonISR(btn1, BTN1_PIN)
   initPeerings(first);
   sdev.initDone();
 }
@@ -247,9 +238,6 @@ void loop() {
   bool worked = hal.runready();
   bool poll = sdev.pollRadio();
   if( worked == false && poll == false ) {
-#ifndef __AVR_ATmega128__
-    hal.activity.savePower<Sleep<> >(hal);
-#endif
+    hal.activity.savePower<Idle<> >(hal);
    }
 }
-
